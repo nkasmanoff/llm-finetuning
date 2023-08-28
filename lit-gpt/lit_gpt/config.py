@@ -629,4 +629,36 @@ freewilly_2 = [
 configs.extend(freewilly_2)
 
 
+##########################
+# OpenAI GPT2
+##########################
+gpt2 = [
+    # https://huggingface.co/gpt2/blob/main/config.json
+    dict(
+        org="gpt2",
+        name="gpt2",
+    )
+    , 
+    # https://huggingface.co/gpt2-medium/blob/main/config.json
+    dict(
+        org="gpt2",
+        name="gpt2-medium",
+    )
+    ,
+    # https://huggingface.co/gpt2-large/blob/main/config.json
+    dict(
+        org="gpt2",
+        name="gpt2-large",
+    )
+    ,
+    # https://huggingface.co/gpt2-xl/blob/main/config.json
+    dict(
+        org="gpt2",
+        name="gpt2-xl",
+    )
+]
+configs.extend(gpt2)
+
+
+
 name_to_config = {config["name"]: config for config in configs}
