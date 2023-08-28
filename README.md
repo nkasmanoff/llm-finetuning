@@ -147,12 +147,12 @@ python lit-gpt/generate/base.py --checkpoint_dir checkpoints/meta-llama/Llama-2-
 
 # Finetune
 
-`lit-gpt` provides a few resource constrainted finetuning strategies like lora, qlora, etc., out of the box.
+`lit-gpt` provides a few resource constrained finetuning strategies like lora, qlora, etc., out of the box.
 
 1. LoRA finetuning
 
 ```
-lit-gpt/finetune/lora.py --data_dir data/dolly/meta-llama/ --checkpoint_dir checkpoints/meta-llama/Llama-2-7b-hf --precision bf16-true --out_dir out/lora/llama-2-7b
+python lit-gpt/finetune/lora.py --data_dir data/dolly/ --checkpoint_dir checkpoints/meta-llama/Llama-2-7b-hf --precision bf16-true --out_dir out/lora/llama-2-7b
 ```
 
 2. QLoRA finetuning
@@ -166,12 +166,12 @@ pip install bitsandbytes
 Finetune with QLoRA by passing the `--quantize` flag to the `lora.py` script
 
 ```
-lit-gpt/finetune/lora.py --data_dir data/dolly/meta-llama/ --checkpoint_dir checkpoints/meta-llama/Llama-2-7b-hf --precision bf16-true --out_dir out/lora/llama-2-7b --quantize "bnb.nf4"
+lit-gpt/finetune/lora.py --data_dir data/dolly/ --checkpoint_dir checkpoints/meta-llama/Llama-2-7b-hf --precision bf16-true --out_dir out/lora/llama-2-7b --quantize "bnb.nf4"
 ```
 
 # Evaluation (EluetherAI LM Eval Harness)
 
-Once you have a working setup for finetuing, coming up with finetuing strategies is going to be one of the most important task but this will be guided by an even bigger task - thinking through the evaluation strategy.
+Once you have a working setup for finetuning, coming up with finetuing strategies is going to be one of the most important task but this will be guided by an even bigger task - thinking through the evaluation strategy.
 
 As per the organizers of this competition:
 
