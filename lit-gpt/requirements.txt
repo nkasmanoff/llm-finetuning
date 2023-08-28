@@ -1,7 +1,12 @@
 # torch>=2.1.0dev
 lightning @ git+https://github.com/Lightning-AI/lightning@master
 jsonargparse[signatures]  # CLI
-
+bitsandbytes
+sentencepiece
+tokenizers
+datasets
+git+https://github.com/EleutherAI/lm-evaluation-harness.git@master
+huggingface_hub
 # other optional dependencies are
 # sentencepiece  # pythia, falcon, redpajama
 # tokenizers  #  llama-based models

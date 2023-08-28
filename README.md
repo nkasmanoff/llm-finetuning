@@ -56,7 +56,7 @@ Let's install other requirements by lit-gpt
 
 ```
 cd lit-gpt
-pip install -r requirements.txt tokenizers sentencepiece huggingface_hub
+pip install -r requirements.txt
 cd ..
 ```
 
