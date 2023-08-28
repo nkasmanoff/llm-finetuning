@@ -14,6 +14,21 @@ The most important thing is to get your hands on a A100 (40 GB) or a 4090. Note 
 
 I will be using conda but you can use your choice of environment management tool.
 
+To install conda if not already available, I used miniconda. Here's the steps I followed to install via https://docs.conda.io/en/latest/miniconda.html#linux-installers
+
+```
+mkdir -p ~/miniconda3
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda3/miniconda.sh
+bash ~/miniconda3/miniconda.sh -b -u -p ~/miniconda3
+rm -rf ~/miniconda3/miniconda.sh
+```
+
+and then 
+
+```
+~/miniconda3/bin/conda init bash
+```
+
 ```
 conda create -n neurips-llm python==3.10.0
 ```
@@ -21,11 +36,9 @@ conda create -n neurips-llm python==3.10.0
 ### 2. Clone this repository
 
 ```
-git clone --recurse-submodule https://github.com/nkasmanoff/neurips-llm-efficiency-challenge
-cd neurips-llm-efficiency-challenge
+git clone https://github.com/nkasmanoff/llm-finetuning.git
+cd llm-finetuning
 ```
-
-Note the usage of `--recurse-submodule` here. The repo uses my [fork](https://github.com/ayulockin/lit-gpt) of [`lit-gpt`](https://github.com/Lightning-AI/lit-gpt) as a submodule. My fork is instrumented with [Weights and Biases](https://wandb.ai/site) experiment tracking and model versioning capabilities. This is also in sync with the upstream repo (lit-gpt). 
 
 ### 3. Install PyTorch 2.1 (nightly)
 
@@ -84,7 +97,7 @@ To download Flash Attention here are the required steps:
 
 ```
 pip install packaging
-pip install packaging uninstall -y ninja && pip install ninja
+pip uninstall -y ninja && pip install ninja
 
 MAX_JOBS=8 pip install flash-attn --no-build-isolation
 ```
