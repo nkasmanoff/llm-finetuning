@@ -1,6 +1,6 @@
 # NeurIPS Large Language Model Efficiency Challenge: 1 LLM + 1GPU + 1Day
 
-# This is a clone of [https://github.com/ayulockin/neurips-llm-efficiency-challenge](https://github.com/ayulockin/neurips-llm-efficiency-challenge). I've consolidated the two git repositories into one for more control over changes to fine-tuning methods, but credit belongs to [https://github.com/ayulockin](https://github.com/ayulockin) and Lighting AI for the starting wrappers.
+## This is a clone of [https://github.com/ayulockin/neurips-llm-efficiency-challenge](https://github.com/ayulockin/neurips-llm-efficiency-challenge). I've consolidated the two git repositories into one for more control over changes to fine-tuning methods, but credit belongs to [https://github.com/ayulockin](https://github.com/ayulockin) and Lighting AI for the starting wrappers.
 
 This repository showcase a working pipeline that can be used for the [NeurIPS Large Language Model Efficiency Challenge: 1 LLM + 1GPU + 1Day](https://llm-efficiency-challenge.github.io/index) challenge. The aim of this challenge is to come up with strategies to finetune a large language model either on 1 Nvidia 4090 or 1 A100 (40 GB) inorder to improve the performance on a subset of HELM benchmark and on a set of secret holdout tasks.
 
