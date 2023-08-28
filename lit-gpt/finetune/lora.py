@@ -26,7 +26,7 @@ from lit_gpt.utils import (
     quantization,
     step_csv_logger,
 )
-from scripts.prepare_alpaca import generate_prompt
+
 
 eval_interval = 100
 save_interval = 100
@@ -56,6 +56,25 @@ lora_head = False
 warmup_steps = 100
 
 hparams = {k: v for k, v in locals().items() if isinstance(v, (int, float, str)) and not k.startswith("_")}
+
+
+
+def generate_prompt(example):
+    """Generates a standardized message to prompt the model with an instruction, optional input and a
+    'response' field."""
+
+    if example["input"]:
+        return (
+            "Below is an instruction that describes a task, paired with an input that provides further context. "
+            "Write a response that appropriately completes the request.\n\n"
+            f"### Instruction:\n{example['instruction']}\n\n### Input:\n{example['input']}\n\n### Response:"
+        )
+    return (
+        "Below is an instruction that describes a task. "
+        "Write a response that appropriately completes the request.\n\n"
+        f"### Instruction:\n{example['instruction']}\n\n### Response:"
+    )
+
 
 
 def setup(
