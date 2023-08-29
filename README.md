@@ -113,7 +113,8 @@ python lit-gpt/scripts/download.py --repo_id meta-llama/Llama-2-7b-hf --token <H
 python lit-gpt/scripts/convert_hf_checkpoint.py --checkpoint_dir checkpoints/meta-llama/Llama-2-7b-hf
 ```
 
-alternatively, GPT2-XL 
+
+alternatively, GPT2-XL  (in progress)
 
 ```
 python lit-gpt/scripts/download.py --repo_id gpt2-xl
@@ -184,7 +185,7 @@ python lit-gpt/finetune/lora.py --data_dir data/dolly/ --checkpoint_dir checkpoi
 
 # Evaluation (EluetherAI LM Eval Harness)
 
-Once you have a working setup for finetuning, coming up with finetuing strategies is going to be one of the most important task but this will be guided by an even bigger task - thinking through the evaluation strategy.
+Once you have a working setup for finetuning, coming up with finetuning strategies is going to be one of the most important task but this will be guided by an even bigger task - thinking through the evaluation strategy.
 
 As per the organizers of this competition:
 

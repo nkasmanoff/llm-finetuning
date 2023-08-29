@@ -34,25 +34,25 @@ eval_iters = 100
 log_interval = 1
 devices = 1
 # change this value to force a maximum sequence length
-override_max_seq_length = None
+override_max_seq_length = 64
 
 # Hyperparameters
 learning_rate = 3e-4
 batch_size = 128
-micro_batch_size = 4
+micro_batch_size = 1
 gradient_accumulation_iters = batch_size // micro_batch_size
 assert gradient_accumulation_iters > 0
 max_iters = 50000  # train dataset size
 weight_decay = 0.01
-lora_r = 8
+lora_r = 1
 lora_alpha = 16
 lora_dropout = 0.05
-lora_query = True
+lora_query = False
 lora_key = False
-lora_value = True
+lora_value = False
 lora_projection = False
 lora_mlp = False
-lora_head = False
+lora_head = True
 warmup_steps = 100
 
 hparams = {k: v for k, v in locals().items() if isinstance(v, (int, float, str)) and not k.startswith("_")}
@@ -159,9 +159,10 @@ def main(fabric: L.Fabric, data_dir: Path, checkpoint_dir: Path, out_dir: Path, 
         import bitsandbytes as bnb
 
         optimizer = bnb.optim.PagedAdamW(trainable_params, lr=learning_rate, weight_decay=weight_decay)
+
     else:
-        optimizer = torch.optim.AdamW(trainable_params, lr=learning_rate, weight_decay=weight_decay)
-    model, optimizer = fabric.setup(model, optimizer)
+        optimizer = torch.optim.SGD(trainable_params, lr=learning_rate, weight_decay=weight_decay)
+    model, optimizer = fabric.setup(model, optimizer, move_to_device=True)
 
     fabric.seed_everything(1337 + fabric.global_rank)
 
