@@ -59,6 +59,33 @@ def copy_weights_gpt_neox(
         state_dict[to_name] = param
 
 
+def copy_weights_gpt2(
+    state_dict: Dict[str, torch.Tensor],
+    hf_weights: Dict[str, Union[torch.Tensor, NotYetLoadedTensor]],
+    saver: Optional[incremental_save] = None,
+    dtype: Optional[torch.dtype] = None,
+) -> None:
+    weight_map = {
+        "wte.weight": "transformer.wte.weight",
+
+
+
+    }
+
+    for name, param in hf_weights.items():
+        if "gpt2.layers" in name:
+            from_name, number = layer_template(name, 2)
+            to_name = weight_map[from_name]
+            if to_name is None:
+                continue
+            to_name = to_name.format(number)
+        else:
+            to_name = weight_map[name]
+        param = load_param(param, name, dtype)
+        if saver is not None:
+            param = saver.store_early(param)
+        state_dict[to_name] = param
+
 def copy_weights_falcon(
     size: Literal["7b", "40b"],
     state_dict: Dict[str, torch.Tensor],
@@ -212,6 +239,9 @@ def convert_hf_checkpoint(
         # holder to reconstitute the split q, k, v
         qkv_weights = {}
         copy_fn = partial(copy_weights_hf_llama, config, qkv_weights)
+
+    elif "gpt2" in model_name:
+        copy_fn = copy_weights_gpt2        
     else:
         copy_fn = copy_weights_gpt_neox
 
@@ -226,6 +256,7 @@ def convert_hf_checkpoint(
         bin_files = {checkpoint_dir / bin for bin in bin_index["weight_map"].values()}
     else:
         bin_files = set(checkpoint_dir.glob("*.bin"))
+        print
     if not bin_files:
         raise ValueError(f"Expected {str(checkpoint_dir)!r} to contain .bin files")
 
@@ -236,6 +267,7 @@ def convert_hf_checkpoint(
             for bin_file in sorted(bin_files):
                 print("Processing", bin_file)
                 hf_weights = stack.enter_context(lazy_load(bin_file))
+                #TODO: when gpt2, can do a normal load
                 copy_fn(sd, hf_weights, saver=saver, dtype=dtype)
             gc.collect()
         print("Saving converted checkpoint")

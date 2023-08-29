@@ -655,6 +655,20 @@ gpt2 = [
     dict(
         org="gpt2",
         name="gpt2-xl",
+        block_size=1024,
+        vocab_size=50257,
+        padding_multiple=1024,
+        n_layer=48,
+        n_head=25,
+        n_embd=1600,
+        rotary_percentage=0.0,
+        parallel_residual=True,
+        bias=True,
+        _norm_class="LayerNorm",
+        norm_eps=1e-5,
+        _mlp_class="GPT2LMHeadModel",
+        intermediate_size=6400,        
+
     )
 ]
 configs.extend(gpt2)

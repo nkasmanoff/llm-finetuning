@@ -113,6 +113,15 @@ python lit-gpt/scripts/download.py --repo_id meta-llama/Llama-2-7b-hf --token <H
 python lit-gpt/scripts/convert_hf_checkpoint.py --checkpoint_dir checkpoints/meta-llama/Llama-2-7b-hf
 ```
 
+alternatively, GPT2-XL 
+
+```
+python lit-gpt/scripts/download.py --repo_id gpt2-xl
+python lit-gpt/scripts/convert_hf_checkpoint.py --checkpoint_dir checkpoints/gpt2-xl
+```
+
+
+
 > Note: In order to use Llama 2 model you need to fill a small form in the HuggingFace [model card page](https://huggingface.co/meta-llama/Llama-2-7b-hf) for this model. The permission is usually granted in 1-2 days. Tip: Please provide the same email id that you used to create your HuggingFace account.
 
 > Note: You can generate your HuggingFace access token [here](https://huggingface.co/settings/tokens).
@@ -123,6 +132,10 @@ Download the dataset and prepare it using a convenient script provided by `lit-g
 
 ```
 python lit-gpt/scripts/prepare_dolly.py --checkpoint_dir checkpoints/meta-llama/Llama-2-7b-hf
+```
+
+```
+python lit-gpt/scripts/prepare_dolly.py --checkpoint_dir checkpoints/gpt2-xl
 ```
 
 > Note: The tokenizer used by the model checkpoint is used to tokenize the dataset. The dataset will be split into train and test set in the `.pt` format.
