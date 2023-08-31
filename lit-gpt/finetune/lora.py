@@ -3,11 +3,11 @@ import sys
 import time
 from pathlib import Path
 from typing import Dict, List, Literal, Optional, Tuple
-
+import wandb
 import lightning as L
 import torch
 from lightning.fabric.strategies import FSDPStrategy, XLAStrategy
-
+from lightning.pytorch.loggers import WandbLogger
 # support running without installing as a package
 wd = Path(__file__).parent.parent.resolve()
 sys.path.append(str(wd))
@@ -27,7 +27,13 @@ from lit_gpt.utils import (
     step_csv_logger,
 )
 
+# set up wandb
+wandb.login()
+wandb_logger = WandbLogger(project_name = 'neurips-efficiency-challenge')
 
+
+
+# Training settings
 eval_interval = 100
 save_interval = 100
 eval_iters = 100
@@ -109,7 +115,7 @@ def setup(
         strategy = "auto"
 
     logger = step_csv_logger(out_dir.parent, out_dir.name, flush_logs_every_n_steps=log_interval)
-    fabric = L.Fabric(devices=fabric_devices, strategy=strategy, precision=precision, loggers=logger)
+    fabric = L.Fabric(devices=fabric_devices, strategy=strategy, precision=precision, loggers=[logger, wandb_logger])
     fabric.print(hparams)
     fabric.launch(main, data_dir, checkpoint_dir, out_dir, quantize)
 
@@ -258,6 +264,7 @@ def train(
                 f"iter {iter_num} step {step_count}: loss {loss.item():.4f}, iter time:"
                 f" {(t1 - iter_t0) * 1000:.2f}ms{' (optimizer.step)' if not is_accumulating else ''}"
             )
+
 
         if not is_accumulating and step_count % eval_interval == 0:
             t0 = time.perf_counter()

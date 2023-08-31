@@ -7,6 +7,7 @@ tokenizers
 datasets
 git+https://github.com/EleutherAI/lm-evaluation-harness.git@master
 huggingface_hub
+wandb
 # other optional dependencies are
 # sentencepiece  # pythia, falcon, redpajama
 # tokenizers  #  llama-based models
