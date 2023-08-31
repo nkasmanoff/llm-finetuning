@@ -38,7 +38,7 @@ def prepare(
     ignore_index: int = IGNORE_INDEX,
     max_seq_length: Optional[int] = None,
 ) -> None:
-    """Prepare the Alpaca dataset for instruction tuning.
+    """Prepare the Dolly dataset for instruction tuning.
 
     The output is a training and test dataset saved as `train.pt` and `test.pt`,
     which stores the preprocessed and tokenized prompts and labels.
