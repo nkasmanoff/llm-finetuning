@@ -27,9 +27,8 @@ from lit_gpt.utils import (
     step_csv_logger,
 )
 
-# set up wandb
+
 wandb.login()
-wandb_logger = WandbLogger(project_name = 'neurips-efficiency-challenge')
 
 
 
@@ -113,6 +112,8 @@ def setup(
             )
     else:
         strategy = "auto"
+
+    wandb_logger = WandbLogger(project = 'neurips-efficiency-challenge', **{'config': hparams})
 
     logger = step_csv_logger(out_dir.parent, out_dir.name, flush_logs_every_n_steps=log_interval)
     fabric = L.Fabric(devices=fabric_devices, strategy=strategy, precision=precision, loggers=[logger, wandb_logger])
