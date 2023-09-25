@@ -3,6 +3,10 @@ lightning @ git+https://github.com/Lightning-AI/lightning@master
 jsonargparse[signatures]  # CLI
 wandb
 huggingface_hub
+tokenizers
+sentencepiece
+datasets
+
 # other optional dependencies are
 # sentencepiece  # pythia, falcon, redpajama
 # tokenizers  #  llama-based models
