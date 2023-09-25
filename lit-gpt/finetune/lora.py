@@ -9,7 +9,7 @@ import torch
 from lightning.fabric.strategies import FSDPStrategy
 
 import wandb
-from lighting.pytorch.loggers import WandbLogger 
+from lightning.pytorch.loggers import WandbLogger 
 
 
 # support running without installing as a package
@@ -35,8 +35,6 @@ from scripts.prepare_alpaca import generate_prompt
 
 # set up wandb
 wandb.login()
-wandb_logger = WandbLogger(project_name = 'neurips-efficiency-challenge')
-
 
 
 
@@ -60,16 +58,17 @@ weight_decay = 0.01
 lora_r = 8
 lora_alpha = 16
 lora_dropout = 0.05
-lora_query = True
+lora_query = False
 lora_key = False
-lora_value = True
+lora_value = False
 lora_projection = False
 lora_mlp = False
-lora_head = False
+lora_head = True
 warmup_steps = 100
 
 hparams = {k: v for k, v in locals().items() if isinstance(v, (int, float, str)) and not k.startswith("_")}
 
+wandb_logger = WandbLogger(project="neurips-efficiency-challenge", **{"config": hparams})
 
 def setup(
     data_dir: Path = Path("data/alpaca"),
@@ -184,7 +183,8 @@ def train(
     max_seq_length, longest_seq_length, longest_seq_ix = get_max_seq_length(train_data)
     model.max_seq_length = max_seq_length
 
-    validate(fabric, model, val_data, tokenizer, longest_seq_length)  # sanity check
+    val_loss = validate(fabric, model, val_data, tokenizer, longest_seq_length)  # sanity check
+
 
     with torch.device("meta"):
         meta_model = GPT(model.config)
@@ -247,9 +247,13 @@ def train(
                 f" {(t1 - iter_t0) * 1000:.2f}ms{' (optimizer.step)' if not is_accumulating else ''}"
             )
 
+            wandb.log({"train_loss": loss.item(), "train_step": step_count})
+
         if not is_accumulating and step_count % eval_interval == 0:
             t0 = time.perf_counter()
             val_loss = validate(fabric, model, val_data, tokenizer, longest_seq_length)
+            wandb.log({"val_loss": val_loss, "train_step": step_count})
+            # TODO: next up add outputs
             t1 = time.perf_counter() - t0
             speed_monitor.eval_end(t1)
             fabric.print(f"step {iter_num}: val loss {val_loss.item():.4f}, val time: {t1 * 1000:.2f}ms")
