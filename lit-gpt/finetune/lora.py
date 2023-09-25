@@ -11,6 +11,7 @@ from lightning.fabric.strategies import FSDPStrategy
 import wandb
 from lighting.pytorch.loggers import WandbLogger 
 
+
 # support running without installing as a package
 wd = Path(__file__).parent.parent.resolve()
 sys.path.append(str(wd))
