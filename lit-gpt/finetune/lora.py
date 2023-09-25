@@ -8,6 +8,9 @@ import lightning as L
 import torch
 from lightning.fabric.strategies import FSDPStrategy
 
+import wandb
+from lighting.pytorch.loggers import WandbLogger 
+
 # support running without installing as a package
 wd = Path(__file__).parent.parent.resolve()
 sys.path.append(str(wd))
@@ -27,6 +30,14 @@ from lit_gpt.utils import (
     step_csv_logger,
 )
 from scripts.prepare_alpaca import generate_prompt
+
+
+# set up wandb
+wandb.login()
+wandb_logger = WandbLogger(project_name = 'neurips-efficiency-challenge')
+
+
+
 
 eval_interval = 100
 save_interval = 100
@@ -85,7 +96,7 @@ def setup(
         strategy = "auto"
 
     logger = step_csv_logger(out_dir.parent, out_dir.name, flush_logs_every_n_steps=log_interval)
-    fabric = L.Fabric(devices=fabric_devices, strategy=strategy, precision=precision, loggers=logger)
+    fabric = L.Fabric(devices=fabric_devices, strategy=strategy, precision=precision, loggers=[logger, wandb_logger])
     fabric.print(hparams)
     fabric.launch(main, data_dir, checkpoint_dir, out_dir, quantize)
 
