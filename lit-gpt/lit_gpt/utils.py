@@ -1,5 +1,5 @@
 """Utility functions for training and inference."""
-
+import os
 import pickle
 import sys
 import warnings
@@ -14,6 +14,7 @@ import torch
 import torch.nn as nn
 import torch.utils._device
 from lightning.fabric.loggers import CSVLogger
+from lightning.fabric.utilities.load import _lazy_load
 from torch.serialization import normalize_storage_type
 
 
@@ -34,39 +35,34 @@ def quantization(mode: Optional[str] = None):
         yield
         return
 
+    if mode.startswith("bnb"):
+        import quantize.bnb as bnb
     if mode == "bnb.int8":
-        from quantize.bnb import InferenceLinear8bitLt
-
-        quantized_linear_cls = InferenceLinear8bitLt
+        quantized_linear_cls = bnb.InferenceLinear8bitLt
     elif mode == "bnb.fp4":
-        from quantize.bnb import Linear4bit
-
         # Use a class instead `functools.partial` to respect `isinstance` checks and attribute accesses
-        class QuantizedLinear(Linear4bit):
+        class QuantizedLinear(bnb.Linear4bit):
             def __init__(self, *args, **kwargs):
                 super().__init__(*args, quant_type="fp4", compress_statistics=False, **kwargs)
 
         quantized_linear_cls = QuantizedLinear
     elif mode == "bnb.fp4-dq":
-        from quantize.bnb import Linear4bit
 
-        class QuantizedLinear(Linear4bit):
+        class QuantizedLinear(bnb.Linear4bit):
             def __init__(self, *args, **kwargs):
                 super().__init__(*args, quant_type="fp4", compress_statistics=True, **kwargs)
 
         quantized_linear_cls = QuantizedLinear
     elif mode == "bnb.nf4":
-        from quantize.bnb import Linear4bit
 
-        class QuantizedLinear(Linear4bit):
+        class QuantizedLinear(bnb.Linear4bit):
             def __init__(self, *args, **kwargs):
                 super().__init__(*args, quant_type="nf4", compress_statistics=False, **kwargs)
 
         quantized_linear_cls = QuantizedLinear
     elif mode == "bnb.nf4-dq":
-        from quantize.bnb import Linear4bit
 
-        class QuantizedLinear(Linear4bit):
+        class QuantizedLinear(bnb.Linear4bit):
             def __init__(self, *args, **kwargs):
                 super().__init__(*args, quant_type="nf4", compress_statistics=True, **kwargs)
 
@@ -216,8 +212,10 @@ class LazyLoadingUnpickler(pickle.Unpickler):
 
 
 class lazy_load:
-    def __init__(self, fn):
-        self.zf = torch._C.PyTorchFileReader(str(fn))
+    def __init__(self, path: Union[Path, str]) -> None:
+        if not os.path.isfile(path):
+            raise FileNotFoundError(f"Path {str(path)!r} does not exist or is not a file.")
+        self.zf = torch._C.PyTorchFileReader(str(path))
         with BytesIO(self.zf.get_record("data.pkl")) as pkl:
             mup = LazyLoadingUnpickler(pkl, self)
             self.sd = mup.load()
@@ -299,21 +297,13 @@ class SavingProxyForTensor:
         if reduce_args[0] == torch._utils._rebuild_tensor_v2:
             # for Tensors with Python attributes
             (a0, a1, (storage, *a2_other), *other_reduce_args) = reduce_args
-            assert isinstance(
-                storage, torch.storage.TypedStorage
-            ), "Please check for updates"
-            storage_proxy = SavingProxyForStorage(
-                storage, saver, protocol_version=protocol_version
-            )
+            assert isinstance(storage, torch.storage.TypedStorage), "Please check for updates"
+            storage_proxy = SavingProxyForStorage(storage, saver, protocol_version=protocol_version)
             self.reduce_args = (a0, a1, (storage_proxy, *a2_other), *other_reduce_args)
         else:
             (storage, *other_reduce_args) = reduce_args
-            assert isinstance(
-                storage, torch.storage.TypedStorage
-            ), "Please check for updates"
-            storage_proxy = SavingProxyForStorage(
-                storage, saver, protocol_version=protocol_version
-            )
+            assert isinstance(storage, torch.storage.TypedStorage), "Please check for updates"
+            storage_proxy = SavingProxyForStorage(storage, saver, protocol_version=protocol_version)
             self.reduce_args = (storage_proxy, *other_reduce_args)
 
     def __reduce_ex__(self, protocol_version):
@@ -504,18 +494,25 @@ def map_old_state_dict_weights(state_dict: Dict, mapping: Mapping, prefix: str) 
     return state_dict
 
 
-def get_default_supported_precision(training: bool, tpu: bool = False) -> str:
-    """Return default precision that is supported by the hardware.
+def get_default_supported_precision(training: bool) -> str:
+    """Return default precision that is supported by the hardware: either `bf16` or `16`.
 
     Args:
         training: `-mixed` or `-true` version of the precision to use
-        tpu: whether TPU device is used
 
     Returns:
         default precision that is suitable for the task and is supported by the hardware
     """
-    if tpu:
-        return "32-true"
-    if not torch.cuda.is_available() or torch.cuda.is_bf16_supported():
-        return "bf16-mixed" if training else "bf16-true"
-    return "16-mixed" if training else "16-true"
+    from lightning.fabric.accelerators import MPSAccelerator
+
+    if MPSAccelerator.is_available() or (torch.cuda.is_available() and not torch.cuda.is_bf16_supported()):
+        return "16-mixed" if training else "16-true"
+    return "bf16-mixed" if training else "bf16-true"
+
+
+def load_checkpoint(fabric, model, checkpoint_path: Path, strict: bool = True) -> None:
+    if fabric.world_size > 1:
+        fabric.load_raw(checkpoint_path, model, strict=strict)
+    else:
+        state_dict = _lazy_load(checkpoint_path)
+        model.load_state_dict(state_dict, strict=strict)

@@ -19,8 +19,6 @@
 
 &nbsp;
 
-Test 
-
 # ⚡ Lit-GPT
 
 Hackable [implementation](lit_gpt/model.py) of state-of-the-art open-source large language models released under the **Apache 2.0 license**.
@@ -31,12 +29,18 @@ Supports the following popular model checkpoints:
 |---------------------------------------------------------------------|--------------------------------------------------------------------------------------------------|
 | Meta AI [Llama 2](tutorials/download_llama_2.md)                    | [Touvron et al. 2023](https://arxiv.org/abs/2307.09288)                                          |
 | Stability AI [FreeWilly2](tutorials/download_freewilly_2.md)        | [Stability AI 2023](https://stability.ai/blog/stable-beluga-large-instruction-fine-tuned-models) |
+| Stability AI StableCode                                             | [Stability AI 2023](https://stability.ai/blog/stablecode-llm-generative-ai-coding)               |
 | TII UAE [Falcon](tutorials/download_falcon.md)                      | [TII 2023](https://falconllm.tii.ae)                                                             |
 | OpenLM Research [OpenLLaMA](tutorials/download_openllama.md)        | [Geng & Liu 2023](https://github.com/openlm-research/open_llama)                                 |
-| LMSYS [Vicuna](tutorials/download_vicuna.md)                        | [Li et al. 2023](https://lmsys.org/blog/2023-06-29-longchat)                                     |
+| LMSYS [Vicuna](tutorials/download_vicuna.md)                        | [Li et al. 2023](https://lmsys.org/blog/2023-03-30-vicuna/)                                      |
+| LMSYS [LongChat](tutorials/download_longchat.md)                    | [LongChat Team 2023](https://lmsys.org/blog/2023-06-29-longchat/)                                |
 | Together [RedPajama-INCITE](tutorials/download_redpajama_incite.md) | [Together 2023](https://together.ai/blog/redpajama-models-v1)                                    |
 | EleutherAI [Pythia](tutorials/download_pythia.md)                   | [Biderman et al. 2023](https://arxiv.org/abs/2304.01373)                                         |
 | StabilityAI [StableLM](tutorials/download_stablelm.md)              | [Stability AI 2023](https://github.com/Stability-AI/StableLM)                                    |
+| Platypus                                                            | [Lee, Hunter, and Ruiz 2023](https://arxiv.org/abs/2308.07317)                                   |
+| NousResearch Nous-Hermes                                            | [Org page](https://huggingface.co/NousResearch)                                                  |
+| Meta AI [Code Llama](tutorials/download_code_llama.md)              | [Rozière et al. 2023](https://arxiv.org/abs/2308.12950)                                          |
+| Microsoft Research [phi-1.5](tutorials/download_phi15.md)           | [Li et al. 2023](https://arxiv.org/abs/2309.05463)                                               |
 
 This implementation extends on [Lit-LLaMA](https://github.com/lightning-AI/lit-llama) and [nanoGPT](https://github.com/karpathy/nanoGPT), and it's **powered by [Lightning Fabric](https://lightning.ai/docs/fabric/stable/) ⚡**.
 
@@ -50,7 +54,7 @@ The Lit-GPT repository is the official starter kit for the [NeurIPS 2023 LLM Eff
 
 If you are interested in participating, you can learn more about the NeurIPS LLM Efficiency Challenge on the official website [here](https://llm-efficiency-challenge.github.io). Also see the [Lit-GPT NeurIPS Challenge Quickstart Guide](tutorials/neurips_challenge_quickstart.md) for helpful tips.
 
-**The submission deadline is Oct 15th, 2023.**
+**The submission deadline is Oct 25th, 2023.**
 
 ---
 
@@ -108,7 +112,7 @@ pip install --index-url https://download.pytorch.org/whl/nightly/cpu --pre 'torc
 **(Optional) install Flash Attention 2**
 
 ```bash
-MAX_JOBS=4 pip install 'flash-attn>=2.0.0.post1' --no-build-isolation
+MAX_JOBS=4 pip install flash-attn --no-build-isolation
 ```
 
 All good, now install the dependencies plus some optional ones:
@@ -145,7 +149,7 @@ python chat/base.py
 
 ### Run large models on smaller consumer devices
 
-We support 4-bit quantization (as in QLoRA), LLM.int8, and GPTQ.int4 inference by following [this guide](tutorials/quantize.md).
+We support 4-bit quantization (as in QLoRA), (bnb.nf4, bnb.nf4-dq, bnb.fp4, bnb.fp4-dq, gptq.int4) and 8-bit quantization (bnb.int8) for inference by following [this guide](tutorials/quantize.md).
 
 &nbsp;
 
@@ -190,7 +194,7 @@ More details about each finetuning method and how you can apply it to your own d
 
 &nbsp;
 
-### Finetuning How-To Guides
+### Finetuning how-to guides
 
 These technical tutorials illustrate how to run the finetuning code.
 
@@ -199,7 +203,7 @@ These technical tutorials illustrate how to run the finetuning code.
 
 &nbsp;
 
-### Understanding Finetuning -- Conceptual Tutorials
+### Understanding finetuning -- conceptual tutorials
 
 Looking for conceptual tutorials and explanations? We have some additional articles below:
 
@@ -211,14 +215,33 @@ Looking for conceptual tutorials and explanations? We have some additional artic
 
 ## Pretraining
 
-
-
 We provide simple training scripts based on Fabric if you want to venture into pretraining. Conversion scripts for our optimized streaming `PackedDataset` are included.
 
 Follow this guide to start pretraining on
 
 - [RedPajama, a reproduction of LLaMA's training set](tutorials/pretrain_redpajama.md)
 - [OpenWeb Text, a reproduction of GPT-2's dataset](tutorials/pretrain_openwebtext.md)
+
+
+
+&nbsp;
+
+
+## Supported datasets
+
+Lit-GPT includes a variety of dataset preparation scripts for finetuning and pretraining. Additional information about the datasets and dataset preparation is provided in the [Preparing Datasets](https://github.com/Lightning-AI/lit-gpt/blob/main/tutorials/prepare_dataset.md) tutorial.
+
+
+&nbsp;
+
+## XLA
+
+Lightning AI has partnered with Google to add first-class support for [Cloud TPUs](https://cloud.google.com/tpu) in [Lightning’s frameworks](https://github.com/Lightning-AI/lightning) and Lit-GPT,
+helping democratize AI for millions of developers and researchers worldwide.
+
+Using TPUs with Lightning is as straightforward as changing one line of code.
+
+We provide scripts fully optimized for TPUs in the [XLA directory](xla)
 
 &nbsp;
 

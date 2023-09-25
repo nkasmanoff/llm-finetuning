@@ -7,7 +7,7 @@ from typing import Optional, Tuple, Union
 
 import lightning as L
 import torch
-from lightning.fabric.strategies import FSDPStrategy, XLAStrategy
+from lightning.fabric.strategies import FSDPStrategy
 from torch.utils.data import DataLoader
 
 # support running without installing as a package
@@ -65,24 +65,18 @@ def setup(
     train_data_dir: Path = Path("data/redpajama_sample"),
     val_data_dir: Optional[Path] = None,
     precision: Optional[str] = None,
-    tpu: bool = False,
     resume: Union[bool, Path] = False,
 ) -> None:
-    precision = precision or get_default_supported_precision(training=True, tpu=tpu)
+    precision = precision or get_default_supported_precision(training=True)
 
     if devices > 1:
-        if tpu:
-            # For multi-host TPU training, the device count for Fabric is limited to the count on a single host.
-            devices = "auto"
-            strategy = XLAStrategy(sync_module_states=False)
-        else:
-            strategy = FSDPStrategy(
-                auto_wrap_policy={Block},
-                activation_checkpointing_policy={Block},
-                state_dict_type="full",
-                limit_all_gathers=True,
-                cpu_offload=False,
-            )
+        strategy = FSDPStrategy(
+            auto_wrap_policy={Block},
+            activation_checkpointing_policy={Block},
+            state_dict_type="full",
+            limit_all_gathers=True,
+            cpu_offload=False,
+        )
     else:
         strategy = "auto"
 
@@ -158,7 +152,7 @@ def train(fabric, state, train_dataloader, val_dataloader, speed_monitor):
         # consider passing `SpeedMonitor(flops_per_batch=estimated_flops)` instead
         estimated_flops = estimate_flops(meta_model) * micro_batch_size
         fabric.print(f"Estimated TFLOPs: {estimated_flops * fabric.world_size / 1e12:.2f}")
-        x = torch.randint(0, 1, (micro_batch_size, model.config.block_size))
+        x = torch.randint(0, 1, (micro_batch_size, model.max_seq_length))
         measured_flops = measure_flops(meta_model, x)
         fabric.print(f"Measured TFLOPs: {measured_flops * fabric.world_size / 1e12:.2f}")
         del meta_model, x
@@ -166,10 +160,6 @@ def train(fabric, state, train_dataloader, val_dataloader, speed_monitor):
     total_lengths = 0
     total_t0 = time.perf_counter()
 
-    if fabric.device.type == "xla":
-        import torch_xla.core.xla_model as xm
-
-        xm.mark_step()
     for state["iter_num"], train_data in enumerate(train_dataloader, state["iter_num"]):
         if state["iter_num"] >= max_iters:
             break
@@ -181,8 +171,8 @@ def train(fabric, state, train_dataloader, val_dataloader, speed_monitor):
 
         iter_t0 = time.perf_counter()
 
-        input_ids = train_data[:, 0 : model.config.block_size].contiguous()
-        targets = train_data[:, 1 : model.config.block_size + 1].contiguous()
+        input_ids = train_data[:, 0 : model.max_seq_length].contiguous()
+        targets = train_data[:, 1 : model.max_seq_length + 1].contiguous()
 
         is_accumulating = (state["iter_num"] + 1) % gradient_accumulation_steps != 0
         with fabric.no_backward_sync(model, enabled=is_accumulating):
@@ -195,8 +185,6 @@ def train(fabric, state, train_dataloader, val_dataloader, speed_monitor):
             optimizer.step()
             optimizer.zero_grad()
             state["step_count"] += 1
-        elif fabric.device.type == "xla":
-            xm.mark_step()
 
         t1 = time.perf_counter()
         total_lengths += input_ids.size(1)
@@ -219,7 +207,7 @@ def train(fabric, state, train_dataloader, val_dataloader, speed_monitor):
             val_loss = validate(fabric, model, val_dataloader)
             t1 = time.perf_counter() - t0
             speed_monitor.eval_end(t1)
-            fabric.print(f"step {state['iter_num']}: val loss {val_loss:.4f}, val time: {t1 * 1000:.2f}ms")
+            fabric.print(f"step {state['iter_num']}: val loss {val_loss.item():.4f}, val time: {t1 * 1000:.2f}ms")
             fabric.barrier()
         if not is_accumulating and state["step_count"] % save_interval == 0:
             checkpoint_path = out_dir / f"iter-{state['iter_num']:06d}-ckpt.pth"
@@ -227,18 +215,17 @@ def train(fabric, state, train_dataloader, val_dataloader, speed_monitor):
             fabric.save(checkpoint_path, state)
 
 
-@torch.no_grad()
+@torch.inference_mode()
 def validate(fabric: L.Fabric, model: torch.nn.Module, val_dataloader: DataLoader) -> torch.Tensor:
     fabric.print("Validating ...")
     model.eval()
 
     losses = torch.zeros(eval_iters, device=fabric.device)
     for k, val_data in enumerate(val_dataloader):
-        input_ids = val_data[:, 0 : model.config.block_size].contiguous()
-        targets = val_data[:, 1 : model.config.block_size + 1].contiguous()
+        input_ids = val_data[:, 0 : model.max_seq_length].contiguous()
+        targets = val_data[:, 1 : model.max_seq_length + 1].contiguous()
         logits = model(input_ids)
-        loss = chunked_cross_entropy(logits, targets, chunk_size=0)
-        losses[k] = loss.item()
+        losses[k] = chunked_cross_entropy(logits, targets, chunk_size=0)
     out = losses.mean()
 
     model.train()

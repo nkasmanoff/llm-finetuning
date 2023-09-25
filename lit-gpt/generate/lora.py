@@ -1,7 +1,5 @@
-import json
 import sys
 import time
-import warnings
 from pathlib import Path
 from typing import Literal, Optional
 
@@ -75,20 +73,18 @@ def main(
 
     check_valid_checkpoint_dir(checkpoint_dir)
 
-    with open(checkpoint_dir / "lit_config.json") as fp:
-        config_params = dict(
-            r=lora_r,
-            alpha=lora_alpha,
-            dropout=lora_dropout,
-            to_query=lora_query,
-            to_key=lora_key,
-            to_value=lora_value,
-            to_projection=lora_projection,
-            to_mlp=lora_mlp,
-            to_head=lora_head,
-        )
-        config_params.update(**json.load(fp))
-        config = Config(**config_params)
+    config = Config.from_json(
+        checkpoint_dir / "lit_config.json",
+        r=lora_r,
+        alpha=lora_alpha,
+        dropout=lora_dropout,
+        to_query=lora_query,
+        to_key=lora_key,
+        to_value=lora_value,
+        to_projection=lora_projection,
+        to_mlp=lora_mlp,
+        to_head=lora_head,
+    )
 
     if quantize is not None and devices > 1:
         raise NotImplementedError
@@ -119,23 +115,20 @@ def main(
     tokenizer = Tokenizer(checkpoint_dir)
     sample = {"instruction": prompt, "input": input}
     prompt = generate_prompt(sample)
-    encoded = tokenizer.encode(prompt, device=model.device)
+    encoded = tokenizer.encode(prompt, device=fabric.device)
     prompt_length = encoded.size(0)
     max_returned_tokens = prompt_length + max_new_tokens
 
+    with fabric.init_tensor():
+        # set the max_seq_length to limit the memory usage to what we need
+        model.max_seq_length = max_returned_tokens
+        # enable the kv cache
+        model.set_kv_cache(batch_size=1)
+
     t0 = time.perf_counter()
-    y = generate(
-        model,
-        encoded,
-        max_returned_tokens,
-        max_seq_length=max_returned_tokens,
-        temperature=temperature,
-        top_k=top_k,
-        eos_id=tokenizer.eos_id,
-    )
+    y = generate(model, encoded, max_returned_tokens, temperature=temperature, top_k=top_k, eos_id=tokenizer.eos_id)
     t = time.perf_counter() - t0
 
-    model.reset_cache()
     output = tokenizer.decode(y)
     output = output.split("### Response:")[1].strip()
     fabric.print(output)
@@ -150,9 +143,4 @@ if __name__ == "__main__":
     from jsonargparse import CLI
 
     torch.set_float32_matmul_precision("high")
-    warnings.filterwarnings(
-        # Triggered internally at ../aten/src/ATen/EmptyTensor.cpp:31
-        "ignore",
-        message="ComplexHalf support is experimental and many operators don't support it yet",
-    )
     CLI(main)
