@@ -62,7 +62,7 @@ lora_query = False
 lora_key = False
 lora_value = False
 lora_projection = False
-lora_mlp = False
+lora_mlp = True
 lora_head = True
 warmup_steps = 100
 
@@ -147,7 +147,7 @@ def main(fabric: L.Fabric, data_dir: Path, checkpoint_dir: Path, out_dir: Path, 
     if quantize and quantize.startswith("bnb."):
         import bitsandbytes as bnb
 
-        optimizer = bnb.optim.PagedAdamW(trainable_params, lr=learning_rate, weight_decay=weight_decay)
+        optimizer = bnb.optim.SGD8bit(trainable_params, lr=learning_rate, weight_decay=weight_decay) # using SGD8bit instead of PagedAdamW for memory efficency
     else:
         optimizer = torch.optim.AdamW(trainable_params, lr=learning_rate, weight_decay=weight_decay)
     optimizer = fabric.setup_optimizers(optimizer)
