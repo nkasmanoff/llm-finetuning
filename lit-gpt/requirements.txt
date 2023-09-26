@@ -6,7 +6,8 @@ huggingface_hub
 tokenizers
 sentencepiece
 datasets
-
+scipy
+bitsandbytes>=0.41.1
 # other optional dependencies are
 # sentencepiece  # pythia, falcon, redpajama
 # tokenizers  #  llama-based models

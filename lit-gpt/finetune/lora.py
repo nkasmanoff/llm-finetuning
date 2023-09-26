@@ -38,7 +38,7 @@ wandb.login()
 
 
 
-eval_interval = 100
+eval_interval = 50
 save_interval = 100
 eval_iters = 100
 eval_max_new_tokens = 100
@@ -251,9 +251,14 @@ def train(
 
         if not is_accumulating and step_count % eval_interval == 0:
             t0 = time.perf_counter()
-            val_loss = validate(fabric, model, val_data, tokenizer, longest_seq_length)
+            val_loss, instruction, output = validate(fabric, model, val_data, tokenizer, longest_seq_length)
             wandb.log({"val_loss": val_loss, "train_step": step_count})
-            # TODO: next up add outputs
+            # save instruction and output to wandb table
+
+            columns = ["instruction", "output"]
+            my_data = [[instruction, output]]
+            wandb_logger.log_text_table(table_name="val_examples", columns=columns, data=my_data)
+
             t1 = time.perf_counter() - t0
             speed_monitor.eval_end(t1)
             fabric.print(f"step {iter_num}: val loss {val_loss.item():.4f}, val time: {t1 * 1000:.2f}ms")
@@ -291,7 +296,7 @@ def validate(
     fabric.print(output)
 
     model.train()
-    return val_loss
+    return val_loss, instruction, output
 
 
 def get_batch(
