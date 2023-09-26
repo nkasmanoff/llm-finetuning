@@ -99,7 +99,7 @@ To download Flash Attention here are the required steps:
 pip install packaging
 pip uninstall -y ninja && pip install ninja
 
-MAX_JOBS=8 pip install flash-attn --no-build-isolation
+MAX_JOBS=16 pip install flash-attn --no-build-isolation
 ```
 
 > An A100 will typically come with 83.6 GB of usable RAM. `ninja` will do parallel compilation jobs that could exhaust the amount of RAM. Set the max number of jobs using `MAX_JOBS`. A `MAX_JOBS=4` will take 30+ minutes to compile flash attention, while `MAX_JOBS=8` might take 20ish minutes (with 35ish GB of RAM usage). On an A100, `MAX_JOBS` of 16 might work (haven't tested).
@@ -109,7 +109,7 @@ MAX_JOBS=8 pip install flash-attn --no-build-isolation
 We start by downloading the model and preparing the model so that it can be consumed by `lit-gpt`'s finetuning pipeline.
 
 ```
-python lit-gpt/scripts/download.py --repo_id meta-llama/Llama-2-7b-hf --token <HuggingFace Token>
+python lit-gpt/scripts/download.py --repo_id meta-llama/Llama-2-7b-hf --access_token <HuggingFace Token>
 python lit-gpt/scripts/convert_hf_checkpoint.py --checkpoint_dir checkpoints/meta-llama/Llama-2-7b-hf
 ```
 
