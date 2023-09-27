@@ -18,8 +18,10 @@ RUN apt-get update && apt-get install -y git
 RUN pip install -r requirements.txt huggingface_hub sentencepiece
 
 # get open-llama weights: https://github.com/Lightning-AI/lit-gpt/blob/main/tutorials/download_openllama.md
-RUN python scripts/download.py --repo_id openlm-research/open_llama_3b
-RUN python scripts/convert_hf_checkpoint.py --checkpoint_dir checkpoints/openlm-research/open_llama_3b
+#RUN python scripts/download.py --repo_id openlm-research/open_llama_3b
+RUN python scripts/download.py --repo_id meta-llama/Llama-2-7b-hf --access_token $HF_TOKEN
+#RUN python scripts/convert_hf_checkpoint.py --checkpoint_dir checkpoints/openlm-research/open_llama_3b
+RUN python scripts/convert_hf_checkpoint.py --checkpoint_dir checkpoints/meta-llama/Llama-2-7b-hf
 
 # Copy over single file server
 COPY ./main_submission.py /submission/main.py
