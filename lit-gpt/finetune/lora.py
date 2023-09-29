@@ -3,7 +3,7 @@ import sys
 import time
 from pathlib import Path
 from typing import Dict, List, Literal, Optional, Tuple
-
+import random
 import lightning as L
 import torch
 from lightning.fabric.strategies import FSDPStrategy
@@ -38,7 +38,7 @@ wandb.login()
 
 
 
-eval_interval = 50
+eval_interval = 100
 save_interval = 100
 eval_iters = 100
 eval_max_new_tokens = 100
@@ -55,14 +55,14 @@ gradient_accumulation_iters = batch_size // micro_batch_size
 assert gradient_accumulation_iters > 0
 max_iters = 50000  # train dataset size
 weight_decay = 0.01
-lora_r = 8
+lora_r = 32
 lora_alpha = 16
-lora_dropout = 0.05
+lora_dropout = 0.1
 lora_query = False
 lora_key = False
 lora_value = False
 lora_projection = False
-lora_mlp = True
+lora_mlp = False
 lora_head = True
 warmup_steps = 100
 
@@ -147,7 +147,7 @@ def main(fabric: L.Fabric, data_dir: Path, checkpoint_dir: Path, out_dir: Path, 
     if quantize and quantize.startswith("bnb."):
         import bitsandbytes as bnb
 
-        optimizer = bnb.optim.SGD8bit(trainable_params, lr=learning_rate, weight_decay=weight_decay) # using SGD8bit instead of PagedAdamW for memory efficency
+        optimizer = bnb.optim.PagedAdamW(trainable_params, lr=learning_rate, weight_decay=weight_decay) # using SGD8bit instead of PagedAdamW for memory efficency
     else:
         optimizer = torch.optim.AdamW(trainable_params, lr=learning_rate, weight_decay=weight_decay)
     optimizer = fabric.setup_optimizers(optimizer)
@@ -183,7 +183,6 @@ def train(
     max_seq_length, longest_seq_length, longest_seq_ix = get_max_seq_length(train_data)
     model.max_seq_length = max_seq_length
 
-    val_loss = validate(fabric, model, val_data, tokenizer, longest_seq_length)  # sanity check
 
 
     with torch.device("meta"):
@@ -204,7 +203,16 @@ def train(
     step_count = 0
     total_lengths = 0
     total_t0 = time.perf_counter()
+    columns = ["step_num","instruction", "output"]
+    output_logged_text = []
+    val_loss, instruction, output = validate(fabric, model, val_data, tokenizer, longest_seq_length) # sanity check
 
+    # save instruction and output to wandb table
+
+    output_logged_text.append([0,instruction,output])
+
+    wandb_logger.log_text(key="val_examples", columns=columns, data=output_logged_text)
+    
     for iter_num in range(max_iters):
         if step_count <= warmup_steps:
             # linear warmup
@@ -255,10 +263,8 @@ def train(
             wandb.log({"val_loss": val_loss, "train_step": step_count})
             # save instruction and output to wandb table
 
-            columns = ["instruction", "output"]
-            my_data = [[instruction, output]]
-            wandb_logger.log_text_table(table_name="val_examples", columns=columns, data=my_data)
-
+            output_logged_text.append([step_count,instruction,output])
+            wandb_logger.log_text(key="val_examples", columns=columns, data=output_logged_text)
             t1 = time.perf_counter() - t0
             speed_monitor.eval_end(t1)
             fabric.print(f"step {iter_num}: val loss {val_loss.item():.4f}, val time: {t1 * 1000:.2f}ms")
@@ -282,7 +288,7 @@ def validate(
     val_loss = losses.mean()
 
     # produce an example:
-    instruction = "Recommend a movie for me to watch during the weekend and explain the reason."
+    instruction = random.choice(["Recommend a movie for me to watch during the weekend and explain the reason.", "Could you tell me about a project you are very proud of?", "What is Newton's 3rd Law?"])
     fabric.print(instruction)
     sample = {"instruction": instruction, "input": ""}
     prompt = generate_prompt(sample)
