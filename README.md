@@ -1,10 +1,10 @@
-# NeurIPS Large Language Model Efficiency Challenge: 1 LLM + 1GPU + 1Day
+# LLM Finetuning
 
-## This is a clone of [https://github.com/ayulockin/neurips-llm-efficiency-challenge](https://github.com/ayulockin/neurips-llm-efficiency-challenge). I've consolidated the two git repositories into one for more control over changes to fine-tuning methods, but credit belongs to [https://github.com/ayulockin](https://github.com/ayulockin) and Lighting AI for the starting wrappers.
+This is a clone of [ayulockin/neurips-llm-efficiency-challenge](https://github.com/ayulockin/neurips-llm-efficiency-challenge). 
 
-This repository showcase a working pipeline that can be used for the [NeurIPS Large Language Model Efficiency Challenge: 1 LLM + 1GPU + 1Day](https://llm-efficiency-challenge.github.io/index) challenge. The aim of this challenge is to come up with strategies to finetune a large language model either on 1 Nvidia 4090 or 1 A100 (40 GB) inorder to improve the performance on a subset of HELM benchmark and on a set of secret holdout tasks.
+This repository showcase a working pipeline that can be used for fine-tuning and hosting an LLM.
 
-Coming up with strategies is one thing but one needs to first have a working pipeline to fit atleast a 7B LLM in one GPU. This itself is a challenge. This repo is created to outline the setup and gotchas and is built on the shoulder of giants.
+The instructions below are based on the linked repos / demos above, adapted for my own purposes. As of 11/14/2023, I'm using this for fine-tuning a smaller LLM on a custom instruction dataset saved on a csv file which is read in by lit-gpt.
 
 # Setup
 
@@ -30,7 +30,7 @@ and then
 ```
 
 ```
-conda create -n neurips-llm python==3.10.0
+conda create -n llm-finetuning python==3.10.0
 ```
 
 ### 2. Clone this repository
@@ -114,17 +114,6 @@ python lit-gpt/scripts/convert_hf_checkpoint.py --checkpoint_dir checkpoints/met
 ```
 
 
-alternatively, GPT2-XL  (in progress)
-
-```
-python lit-gpt/scripts/download.py --repo_id gpt2-xl
-python lit-gpt/scripts/convert_hf_checkpoint.py --checkpoint_dir checkpoints/gpt2-xl
-```
-
-
-
-> Note: In order to use Llama 2 model you need to fill a small form in the HuggingFace [model card page](https://huggingface.co/meta-llama/Llama-2-7b-hf) for this model. The permission is usually granted in 1-2 days. Tip: Please provide the same email id that you used to create your HuggingFace account.
-
 > Note: You can generate your HuggingFace access token [here](https://huggingface.co/settings/tokens).
 
 # Data
@@ -132,20 +121,17 @@ python lit-gpt/scripts/convert_hf_checkpoint.py --checkpoint_dir checkpoints/gpt
 Download the dataset and prepare it using a convenient script provided by `lit-gpt`. Below I am downloading the [`databricks-dolly-15k`](https://huggingface.co/datasets/databricks/databricks-dolly-15k) dataset.
 
 ```
-python lit-gpt/scripts/prepare_dolly.py --checkpoint_dir checkpoints/meta-llama/Llama-2-7b-hf
-```
-
-```
-python lit-gpt/scripts/prepare_dolly.py --checkpoint_dir checkpoints/gpt2-xl
+python lit-gpt/scripts/prepare_csv.py --csv_path test_data.csv \
+--destination_path data/csv \
+--checkpoint_dir checkpoints/meta-llama/Llama-2-7b-hf \
+--test_split_fraction 0.1 \
+--seed 42 \
+--mask_inputs false \
+--ignore_index -1
 ```
 
 > Note: The tokenizer used by the model checkpoint is used to tokenize the dataset. The dataset will be split into train and test set in the `.pt` format.
 
-You are not only limited to the `databricks-dolly-15k` dataset. You can also download and prepare [`RedPajama-Data-1T`](https://huggingface.co/datasets/togethercomputer/RedPajama-Data-1T) dataset.
-
-```
-python lit-gpt/scripts/prepare_redpajama.py --checkpoint_dir checkpoints/meta-llama/Llama-2-7b-hf
-```
 
 Follow [these steps](https://github.com/Lightning-AI/lit-gpt/blob/main/tutorials/finetune_lora.md#tune-on-your-dataset) to create your own data preparation script.
 
@@ -156,7 +142,7 @@ Follow [these steps](https://github.com/Lightning-AI/lit-gpt/blob/main/tutorials
 At this point, before going ahead, let's validate if our setup is working.
 
 ```
-python lit-gpt/generate/base.py --checkpoint_dir checkpoints/meta-llama/Llama-2-7b-hf --prompt "Tell me an interesting fun fact about earth:"
+python lit-gpt/generate/base.py --checkpoint_dir checkpoints/meta-llama/Llama-2-7b-hf --prompt "What can you tell me about floods in Norway?"
 ```
 
 # Finetune
@@ -166,7 +152,7 @@ python lit-gpt/generate/base.py --checkpoint_dir checkpoints/meta-llama/Llama-2-
 1. LoRA finetuning
 
 ```
-python lit-gpt/finetune/lora.py --data_dir data/dolly/ --checkpoint_dir checkpoints/meta-llama/Llama-2-7b-hf --precision bf16-true --out_dir out/lora/llama-2-7b
+python lit-gpt/finetune/lora.py --data_dir data/csv/ --checkpoint_dir checkpoints/meta-llama/Llama-2-7b-hf --precision bf16-true --out_dir out/lora/llama-2-7b
 ```
 
 2. QLoRA finetuning
@@ -180,8 +166,55 @@ pip install bitsandbytes
 Finetune with QLoRA by passing the `--quantize` flag to the `lora.py` script
 
 ```
-python lit-gpt/finetune/lora.py --data_dir data/dolly/ --checkpoint_dir checkpoints/meta-llama/Llama-2-7b-hf --precision bf16-true --out_dir out/lora/llama-2-7b --quantize "bnb.nf4"
+python lit-gpt/finetune/lora.py --data_dir data/csv/ --checkpoint_dir checkpoints/meta-llama/Llama-2-7b-hf --precision bf16-true --out_dir out/lora/llama-2-7b --quantize "bnb.nf4"
 ```
+
+# Convert back to a HF model
+
+TODO: finalize this section.
+
+Once you have finetuned the model, you can convert it back to a HF model checkpoint. This involves merging the weights into the original model, converting it into a HF model checkpoint and then uploading it to the HuggingFace Hub.
+
+First, we merge the weights back:
+
+```
+python scripts/merge_lora.py \
+  --checkpoint_dir "checkpoints/meta-llama/Llama-2-7b-hf/" \
+  --lora_path "out/lora_weights/meta-llama/Llama-2-7b-hf/lit_model_lora_finetuned.pth" \
+  --out_dir "out/lora_merged/meta-llama/Llama-2-7b-hf/"
+```
+
+Once merging, we can convert it back to a HF model checkpoint:
+
+```
+
+python scripts/convert_lit_checkpoint.py \
+  --checkpoint_dir "out/lora_merged/meta-llama/Llama-2-7b-hf/" \
+  --output_path "out/lora_hf/meta-llama/Llama-2-7b-hf/"
+  --config_path "checkpoints/meta-llama/Llama-2-7b-hf/config.json"
+```
+
+We will also need to copy over the tokenizer and config files
+
+```
+cp checkpoints/meta-llama/Llama-2-7b-hf/*.json \
+out/lora_hf/meta-llama/Llama-2-7b-hf/
+```
+
+Finally, we can upload it to the HuggingFace Hub. This is still very much uncertain to me, but based on the HuggingFace Hub guide, it looks like we can upload the entire hub to the folder like so:
+
+```python
+from huggingface_hub import HfApi
+api = HfApi()
+
+api.upload_folder(
+    folder_path="out/lora_hf/meta-llama/Llama-2-7b-hf/",
+    repo_id="nkasmanoff/my-cool-model",
+    repo_type="model",
+)
+```
+
+I'll update this as I figure out what the issues are, but this should be a start!
 
 # Evaluation (EluetherAI LM Eval Harness)
 
@@ -221,85 +254,3 @@ python lit-gpt/eval/lm_eval_harness_lora.py --lora_path out/lora/llama-2-7b/lit_
 
 > Here `out/lora/<model-name>/lit_model_lora_finetuned.pth` is something we get after finetuning the model.
 
-> Notice that for base model evaluation we used the `lm_eval_harness.py` script while for finetuned model evaluation we are using `lm_eval_harness_lora.py`. If you are using other strategy, you might have to modify the scipt to cater to your strategy.
-
-# Setting up submission pipeline
-
-The organizers of this challenge, have provided an useful toy example to demonstrate the submission steps. Check out the official repo [here](https://github.com/llm-efficiency-challenge/neurips_llm_efficiency_challenge/blob/master/toy-submission/README.md).
-
-I have copied the files required to setup the submisison pipeline to this repo to simplify things.
-
-### Installing Nvidia Container Toolkit
-
-There are a lot of details mentioned in the [official documentation](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) to install Nvidia container toolkit.
-
-Here are the steps that worked for me:
-
-
-Setup the GPG key (don't ignore this step)
-
-```
-distribution=$(. /etc/os-release;echo $ID$VERSION_ID) \
-   && curl -s -L https://nvidia.github.io/libnvidia-container/$distribution/libnvidia-container.repo | sudo tee /etc/yum.repos.d/nvidia-container-toolkit.repo
-```
-
-Run the following commands:
-
-```
-sudo apt-get install -y nvidia-container-toolkit
-sudo nvidia-ctk runtime configure --runtime=docker
-sudo systemctl restart docker
-```
-
-### Build the docker image and run
-
-```
-docker build -t submission .
-sudo docker run --rm --gpus all -p 8080:80 toy_submission
-```
-
-If everything works out, you will have a successful running HTTP server. The steps mentioned in the `Dockerfile` should be self satisfactory.
-
-# Evaluation (HELM)
-
-A subset (unknown) will be used for the leaderboard evaluation. We can choose to use the [official HELM repository](https://github.com/stanford-crfm/helm) but it is not configured to hit the endpoints of the HTTP server. We will instead be using this [fork](https://github.com/drisspg/helm/tree/neruips_client) (`neruips_client` branch - note the typo) of the HELM repo.
-
-```
-cd ..
-git clone https://github.com/drisspg/helm.git@neruips_client
-```
-
-Create a new environment because this repo uses different versions of multiple repositories.
-
-```
-conda create -n helm-eval python==3.10.0
-conda activate helm-eval
-cd helm
-pip install -e .
-```
-
-**Note**: If 8080 is already in use, do the following: change the base url that's hardcoded from `http://localhost:8080` (to avoid conflict with Jupyter Notebook, most probable) to `http://localhost:9000` in line 30 of this file - `helm/src/helm/proxy/clients/http_model_client.py`.
-
-Run the following lines to benchmark on the `mmlu` (subset of HELM) benchmark:
-
-```
-cd ..
-cd neurips-llm-efficiency-challenge
-echo 'entries: [{description: "mmlu:model=neurips/local,subject=college_computer_science", priority: 4}]' > run_specs.conf
-helm-run --conf-paths run_specs.conf --suite v1 --max-eval-instances 1000
-helm-summarize --suite v1
-```
-
-Check out the various benchmarks that are present in this benchmark [here](https://crfm.stanford.edu/helm/latest/)
-
-You might encounter this issue - `OSError: /opt/conda/envs/helm-eval/lib/python3.10/site-packages/nvidia/cublas/lib/libcublas.so.11: symbol cublasLtGetStatusString version libcublasLt.so.11 not defined in file libcublasLt.so.11 with link time reference`. If so do the following steps:
-
-To solve this check out this [Stack OverFlow answer](https://stackoverflow.com/a/74828501/8663152).
-
-After successful evaluation, you can find the results in the `benchmark_output` directory. I am working on logging the results to Weights and Biases for easy comparison and tracking.
-
-# Final Thoughts
-
-I hope the documented steps will expedite the setting up process so that more time can be spent on doing ML.
-
-The steps were tested on a GCP Compute Engine VM with A100 (40 GB) GPU. If you have a different setup and if something doesn't work, feel free to open an issue or raise a PR.
