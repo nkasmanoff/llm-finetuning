@@ -1,3 +1,4 @@
+from lit_gpt.tokenizer import Tokenizer
 import json
 import logging
 import sys
@@ -12,15 +13,15 @@ wd = Path(__file__).parent.parent.resolve()
 logger = logging.getLogger(__name__)
 sys.path.append(str(wd))
 
-from lit_gpt.tokenizer import Tokenizer
 
-COLUMNS = ("instruction", "input", "output")
+COLUMNS = ("prompt", "response")
 
 
 def prepare(
     csv_path: Path,
     destination_path: Path = Path("data/csv"),
-    checkpoint_dir: Path = Path("checkpoints/stabilityai/stablelm-base-alpha-3b"),
+    checkpoint_dir: Path = Path(
+        "checkpoints/stabilityai/stablelm-base-alpha-3b"),
     test_split_fraction: float = 0.1,
     seed: int = 42,
     mask_inputs: bool = False,
@@ -41,7 +42,8 @@ def prepare(
 
     df = pd.read_csv(csv_path, dtype=str).fillna("")
     if not (df.columns.values == COLUMNS).all():
-        raise ValueError(f"CSV columns must be {COLUMNS}, found {df.columns.values}")
+        raise ValueError(
+            f"CSV columns must be {COLUMNS}, found {df.columns.values}")
     data = json.loads(df.to_json(orient="records", indent=4))
 
     print("Loading tokenizer...")
@@ -103,7 +105,8 @@ def prepare_sample(example: dict, tokenizer: Tokenizer, max_length: int, mask_in
     full_prompt = generate_prompt(example)
     full_prompt_and_response = full_prompt + example["output"]
     encoded_full_prompt = tokenizer.encode(full_prompt, max_length=max_length)
-    encoded_full_prompt_and_response = tokenizer.encode(full_prompt_and_response, eos=True, max_length=max_length)
+    encoded_full_prompt_and_response = tokenizer.encode(
+        full_prompt_and_response, eos=True, max_length=max_length)
 
     # The labels are the full prompt with response, but with the prompt masked out
     labels = encoded_full_prompt_and_response.clone()
@@ -121,6 +124,8 @@ def prepare_sample(example: dict, tokenizer: Tokenizer, max_length: int, mask_in
 def generate_prompt(example):
     """Generates a standardized message to prompt the model with an instruction, optional input and a
     'response' field."""
+
+    # TODO: consider what happens when the instruction also has a response field?
 
     if example["input"]:
         return (
