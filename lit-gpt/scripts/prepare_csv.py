@@ -125,18 +125,11 @@ def generate_prompt(example):
     """Generates a standardized message to prompt the model with an instruction, optional input and a
     'response' field."""
 
-    # TODO: consider what happens when the instruction also has a response field?
+    # TODO: the instruction tokenizer format here is based on what mistral uses. May want to adapt this in a better way.
 
-    if example["input"]:
-        return (
-            "Below is an instruction that describes a task, paired with an input that provides further context. "
-            "Write a response that appropriately completes the request.\n\n"
-            f"### Instruction:\n{example['instruction']}\n\n### Input:\n{example['input']}\n\n### Response:"
-        )
     return (
-        "Below is an instruction that describes a task. "
-        "Write a response that appropriately completes the request.\n\n"
-        f"### Instruction:\n{example['instruction']}\n\n### Response:"
+
+        f"[INST] {example['instruction']} [/INST] "
     )
 
 

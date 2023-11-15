@@ -109,8 +109,8 @@ MAX_JOBS=16 pip install flash-attn --no-build-isolation
 We start by downloading the model and preparing the model so that it can be consumed by `lit-gpt`'s finetuning pipeline.
 
 ```
-python lit-gpt/scripts/download.py --repo_id meta-llama/Llama-2-7b-hf --access_token <HuggingFace Token>
-python lit-gpt/scripts/convert_hf_checkpoint.py --checkpoint_dir checkpoints/meta-llama/Llama-2-7b-hf
+python lit-gpt/scripts/download.py --repo_id mistralai/Mistral-7B-Instruct-v0.1
+python lit-gpt/scripts/convert_hf_checkpoint.py --checkpoint_dir checkpoints/mistralai/Mistral-7B-Instruct-v0.1
 ```
 
 
@@ -118,12 +118,11 @@ python lit-gpt/scripts/convert_hf_checkpoint.py --checkpoint_dir checkpoints/met
 
 # Data
 
-Download the dataset and prepare it using a convenient script provided by `lit-gpt`. Below I am downloading the [`databricks-dolly-15k`](https://huggingface.co/datasets/databricks/databricks-dolly-15k) dataset.
-
+Download the dataset and prepare it using a convenient script provided by `lit-gpt`. 
 ```
 python lit-gpt/scripts/prepare_csv.py --csv_path test_data.csv \
 --destination_path data/csv \
---checkpoint_dir checkpoints/meta-llama/Llama-2-7b-hf \
+--checkpoint_dir checkpoints/mistralai/Mistral-7B-Instruct-v0.1 \
 --test_split_fraction 0.1 \
 --seed 42 \
 --mask_inputs false \
@@ -142,7 +141,7 @@ Follow [these steps](https://github.com/Lightning-AI/lit-gpt/blob/main/tutorials
 At this point, before going ahead, let's validate if our setup is working.
 
 ```
-python lit-gpt/generate/base.py --checkpoint_dir checkpoints/meta-llama/Llama-2-7b-hf --prompt "What can you tell me about floods in Norway?"
+python lit-gpt/generate/base.py --checkpoint_dir checkpoints/mistralai/Mistral-7B-Instruct-v0.1 --prompt "What can you tell me about floods in Norway?"
 ```
 
 # Finetune
@@ -152,7 +151,7 @@ python lit-gpt/generate/base.py --checkpoint_dir checkpoints/meta-llama/Llama-2-
 1. LoRA finetuning
 
 ```
-python lit-gpt/finetune/lora.py --data_dir data/csv/ --checkpoint_dir checkpoints/meta-llama/Llama-2-7b-hf --precision bf16-true --out_dir out/lora/llama-2-7b
+python lit-gpt/finetune/lora.py --data_dir data/csv/ --checkpoint_dir checkpoints/mistralai/Mistral-7B-Instruct-v0.1 --precision bf16-true --out_dir out/lora/mistralai/Mistral-7B-Instruct-v0.1
 ```
 
 2. QLoRA finetuning
@@ -166,7 +165,7 @@ pip install bitsandbytes
 Finetune with QLoRA by passing the `--quantize` flag to the `lora.py` script
 
 ```
-python lit-gpt/finetune/lora.py --data_dir data/csv/ --checkpoint_dir checkpoints/meta-llama/Llama-2-7b-hf --precision bf16-true --out_dir out/lora/llama-2-7b --quantize "bnb.nf4"
+python lit-gpt/finetune/lora.py --data_dir data/csv/ --checkpoint_dir checkpoints/mistralai/Mistral-7B-Instruct-v0.1 --precision bf16-true --out_dir out/lora/mistralai/Mistral-7B-Instruct-v0.1 --quantize "bnb.nf4"
 ```
 
 # Convert back to a HF model
@@ -179,9 +178,9 @@ First, we merge the weights back:
 
 ```
 python scripts/merge_lora.py \
-  --checkpoint_dir "checkpoints/meta-llama/Llama-2-7b-hf/" \
-  --lora_path "out/lora_weights/meta-llama/Llama-2-7b-hf/lit_model_lora_finetuned.pth" \
-  --out_dir "out/lora_merged/meta-llama/Llama-2-7b-hf/"
+  --checkpoint_dir "checkpoints/mistralai/Mistral-7B-Instruct-v0.1/" \
+  --lora_path "out/lora_weights/mistralai/Mistral-7B-Instruct-v0.1/lit_model_lora_finetuned.pth" \
+  --out_dir "out/lora_merged/mistralai/Mistral-7B-Instruct-v0.1/"
 ```
 
 Once merging, we can convert it back to a HF model checkpoint:
@@ -189,16 +188,16 @@ Once merging, we can convert it back to a HF model checkpoint:
 ```
 
 python scripts/convert_lit_checkpoint.py \
-  --checkpoint_dir "out/lora_merged/meta-llama/Llama-2-7b-hf/" \
-  --output_path "out/lora_hf/meta-llama/Llama-2-7b-hf/"
-  --config_path "checkpoints/meta-llama/Llama-2-7b-hf/config.json"
+  --checkpoint_dir "out/lora_merged/mistralai/Mistral-7B-Instruct-v0.1/" \
+  --output_path "out/lora_hf/mistralai/Mistral-7B-Instruct-v0.1/"
+  --config_path "checkpoints/mistralai/Mistral-7B-Instruct-v0.1/config.json"
 ```
 
 We will also need to copy over the tokenizer and config files
 
 ```
-cp checkpoints/meta-llama/Llama-2-7b-hf/*.json \
-out/lora_hf/meta-llama/Llama-2-7b-hf/
+cp checkpoints/mistralai/Mistral-7B-Instruct-v0.1/*.json \
+out/lora_hf/mistralai/Mistral-7B-Instruct-v0.1/
 ```
 
 Finally, we can upload it to the HuggingFace Hub. This is still very much uncertain to me, but based on the HuggingFace Hub guide, it looks like we can upload the entire hub to the folder like so:
@@ -208,7 +207,7 @@ from huggingface_hub import HfApi
 api = HfApi()
 
 api.upload_folder(
-    folder_path="out/lora_hf/meta-llama/Llama-2-7b-hf/",
+    folder_path="out/lora_hf/mistralai/Mistral-7B-Instruct-v0.1/",
     repo_id="nkasmanoff/my-cool-model",
     repo_type="model",
 )
