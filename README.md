@@ -99,7 +99,7 @@ To download Flash Attention here are the required steps:
 pip install packaging
 pip uninstall -y ninja && pip install ninja
 
-MAX_JOBS=16 pip install flash-attn --no-build-isolation
+MAX_JOBS=24 pip install flash-attn --no-build-isolation
 ```
 
 > An A100 will typically come with 83.6 GB of usable RAM. `ninja` will do parallel compilation jobs that could exhaust the amount of RAM. Set the max number of jobs using `MAX_JOBS`. A `MAX_JOBS=4` will take 30+ minutes to compile flash attention, while `MAX_JOBS=8` might take 20ish minutes (with 35ish GB of RAM usage). On an A100, `MAX_JOBS` of 16 might work (haven't tested).
@@ -120,7 +120,7 @@ python lit-gpt/scripts/convert_hf_checkpoint.py --checkpoint_dir checkpoints/mis
 
 Download the dataset and prepare it using a convenient script provided by `lit-gpt`. 
 ```
-python lit-gpt/scripts/prepare_csv.py --csv_path test_data.csv \
+python lit-gpt/scripts/prepare_csv.py --csv_path floodbrain_results_cleaned.csv \
 --destination_path data/csv \
 --checkpoint_dir checkpoints/mistralai/Mistral-7B-Instruct-v0.1 \
 --test_split_fraction 0.1 \
@@ -177,9 +177,9 @@ Once you have finetuned the model, you can convert it back to a HF model checkpo
 First, we merge the weights back:
 
 ```
-python scripts/merge_lora.py \
+python lit-gpt/scripts/merge_lora.py \
   --checkpoint_dir "checkpoints/mistralai/Mistral-7B-Instruct-v0.1/" \
-  --lora_path "out/lora_weights/mistralai/Mistral-7B-Instruct-v0.1/lit_model_lora_finetuned.pth" \
+  --lora_path "out/lora/mistralai/Mistral-7B-Instruct-v0.1/iter-007999-ckpt.pth" \
   --out_dir "out/lora_merged/mistralai/Mistral-7B-Instruct-v0.1/"
 ```
 
@@ -187,10 +187,10 @@ Once merging, we can convert it back to a HF model checkpoint:
 
 ```
 
-python scripts/convert_lit_checkpoint.py \
-  --checkpoint_dir "out/lora_merged/mistralai/Mistral-7B-Instruct-v0.1/" \
-  --output_path "out/lora_hf/mistralai/Mistral-7B-Instruct-v0.1/"
-  --config_path "checkpoints/mistralai/Mistral-7B-Instruct-v0.1/config.json"
+python lit-gpt/scripts/convert_lit_checkpoint.py \
+  --checkpoint_path "out/lora_merged/mistralai/Mistral-7B-Instruct-v0.1/lit_model.pth" \
+  --output_path "out/lora_hf/mistralai/Mistral-7B-Instruct-v0.1/hf_model.ckpt" \
+  --config_path "checkpoints/mistralai/Mistral-7B-Instruct-v0.1/lit_config.json"
 ```
 
 We will also need to copy over the tokenizer and config files
